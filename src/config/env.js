@@ -10,7 +10,9 @@ dotenv.config(); // Charger les variables d'environnement à partir du fichier .
 const requiredEnvVars = [
   'MONGODB_URI',
   'MONGODB_DB_NAME',
-  'REDIS_URI'
+  'REDIS_URI',
+  'NEW_REQUIRED_VAR1',
+  'NEW_REQUIRED_VAR2'
 ];
 
 // Validation des variables d'environnement

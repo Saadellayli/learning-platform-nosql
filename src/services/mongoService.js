@@ -1,14 +1,20 @@
 // Question: Pourquoi créer des services séparés ?
-// Réponse: 
+// Réponse: Créer des services séparés permet de mieux organiser le code, de faciliter la maintenance et les tests, et de réutiliser le code dans différentes parties de l'application.
 
 const { ObjectId } = require('mongodb');
 
 // Fonctions utilitaires pour MongoDB
 async function findOneById(collection, id) {
-  // TODO: Implémenter une fonction générique de recherche par ID
+    return await collection.findOne({ _id: new ObjectId(id) });
+}
+
+async function insertOne(collection, document) {
+    const result = await collection.insertOne(document);
+    return result.insertedId;
 }
 
 // Export des services
 module.exports = {
-  // TODO: Exporter les fonctions utilitaires
+    findOneById,
+    insertOne
 };

@@ -27,8 +27,18 @@ async function getCourses(req, res) {
   }
 }
 
+async function getCourseStats(req, res) {
+  try {
+    const stats = await mongoService.getCourseStats();
+    res.status(200).json(stats);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch course stats' });
+  }
+}
+
 // Export des contrôleurs
 module.exports = {
   createCourse,
-  getCourses
+  getCourses,
+  getCourseStats
 };
