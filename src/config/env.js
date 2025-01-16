@@ -11,8 +11,8 @@ const requiredEnvVars = [
   'MONGODB_URI',
   'MONGODB_DB_NAME',
   'REDIS_URI',
-  'NEW_REQUIRED_VAR1',
-  'NEW_REQUIRED_VAR2'
+  'API_KEY',
+  'JWT_SECRET'
 ];
 
 // Validation des variables d'environnement
@@ -37,5 +37,7 @@ module.exports = {
   redis: {
     uri: process.env.REDIS_URI
   },
-  port: process.env.PORT || 3000
+  port: process.env.PORT || 3000,
+  apiKey: process.env.API_KEY,
+  jwtSecret: process.env.JWT_SECRET
 };

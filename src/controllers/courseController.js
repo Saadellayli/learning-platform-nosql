@@ -27,6 +27,19 @@ async function getCourses(req, res) {
   }
 }
 
+async function getCourse(req, res) {
+  try {
+    const courseId = req.params.id;
+    const course = await mongoService.getCourse(courseId);
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+    res.status(200).json(course);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch course' });
+  }
+}
+
 async function getCourseStats(req, res) {
   try {
     const stats = await mongoService.getCourseStats();
@@ -40,5 +53,6 @@ async function getCourseStats(req, res) {
 module.exports = {
   createCourse,
   getCourses,
+  getCourse,
   getCourseStats
 };
