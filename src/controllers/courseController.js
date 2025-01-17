@@ -1,58 +1,107 @@
 // Question: Quelle est la différence entre un contrôleur et une route ?
-// Réponse: Un contrôleur contient la logique métier pour gérer les requêtes, tandis qu'une route définit les points d'accès de l'API et les associe aux contrôleurs.
+// Réponse:
 // Question : Pourquoi séparer la logique métier des routes ?
-// Réponse : Cela permet de rendre le code plus modulaire, réutilisable et maintenable.
-
+// Réponse :
 const { ObjectId } = require('mongodb');
 const db = require('../config/db');
 const mongoService = require('../services/mongoService');
 const redisService = require('../services/redisService');
 
-async function createCourse(req, res, next) {
+// Fonction pour récupérer tous les cours
+async function getAllCourses(req, res) {
   try {
-    const courseData = req.body;
-    const result = await mongoService.createCourse(courseData);
-    res.status(201).json(result);
+    const courses = await mongoService.find('courses', {});
+    return res.status(200).json(courses);
   } catch (error) {
-    next(error);
+    console.error('Erreur lors de la récupération des cours:', error);
+    return res.status(500).json({ message: 'Erreur interne du serveur' });
   }
 }
 
-async function getCourses(req, res) {
+// Fonction pour créer un cours
+async function createCourse(req, res) {
   try {
-    const courses = await mongoService.getCourses();
-    res.status(200).json(courses);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-}
+    const { title, description, category, teacher, students, resources } = req.body;
 
-async function getCourse(req, res, next) {
-  try {
-    const courseId = req.params.id;
-    const course = await mongoService.getCourse(courseId);
-    if (!course) {
-      return res.status(404).json({ error: 'Course not found' });
+    if (!title || !description || !category || !teacher) {
+      return res.status(400).json({ message: 'Tous les champs sont requis' });
     }
-    res.status(200).json(course);
+
+    const newCourse = {
+      title,
+      description,
+      category,
+
+      teacher: new ObjectId(teacher), // Use 'new' keyword here
+      students: students.map(studentId => new ObjectId(studentId)), // Use 'new' keyword here
+      resources,
+    };
+
+    const result = await mongoService.insertOne('courses', newCourse);
+    return res.status(201).json(result);
   } catch (error) {
-    next(error);
+    console.error('Erreur lors de la création du cours:', error);
+    return res.status(500).json({ message: 'Erreur interne du serveur' });
   }
 }
 
-async function getCourseStats(req, res, next) {
+async function getCourse(req, res) {
   try {
-    const stats = await mongoService.getCourseStats();
-    res.status(200).json(stats);
+    const { id } = req.params;
+    console.log(`Received request to get course with ID: ${id}`);
+
+    if (!ObjectId.isValid(id)) {
+      console.error(`Invalid ObjectId: ${id}`);
+      return res.status(400).json({ message: 'Invalid ID format' });
+    }
+
+    // Vérifiez si le service Redis est correctement configuré
+    if (!redisService || typeof redisService.getData !== 'function') {
+      console.error('redisService is not defined or getData method is missing');
+      return res.status(500).json({ message: 'Erreur interne du serveur' });
+    }
+
+    // Récupérer depuis Redis avec un timeout
+    const redisTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Redis timeout')), 2000));
+    const cachedCourse = await Promise.race([redisService.getData(id), redisTimeout]).catch(() => null);
+    
+    if (cachedCourse) {
+      console.log(`Course found in cache for ID: ${id}`);
+      return res.status(200).json(cachedCourse);
+    }
+
+    // Si non trouvé dans Redis ou en cas de timeout, récupérer depuis MongoDB
+    const course = await mongoService.findOneById('courses', id);
+    if (!course) {
+      console.log(`Course not found in database for ID: ${id}`);
+      return res.status(404).json({ message: 'Cours non trouvé' });
+    }
+
+    // Mettre en cache dans Redis
+    await redisService.cacheData(id, course, 3600); // Cache pour 1 heure
+    console.log(`Course found and cached for ID: ${id}`);
+    return res.status(200).json(course);
   } catch (error) {
-    next(error);
+    console.error('Erreur lors de la récupération du cours:', error);
+    return res.status(500).json({ message: 'Erreur interne du serveur' });
+  }
+}
+
+// Fonction pour récupérer des statistiques sur les cours
+async function getCourseStats(req, res) {
+  try {
+    const totalCourses = await mongoService.countDocuments('courses');
+    return res.status(200).json({ totalCourses });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des statistiques:', error);
+    return res.status(500).json({ message: 'Erreur interne du serveur' });
   }
 }
 
 // Export des contrôleurs
 module.exports = {
   createCourse,
-  getCourses,
   getCourse,
-  getCourseStats
+  getCourseStats,
+  getAllCourses,
 };

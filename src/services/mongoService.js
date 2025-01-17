@@ -1,40 +1,53 @@
 // Question: Pourquoi créer des services séparés ?
-// Réponse: Créer des services séparés permet de mieux organiser le code, de faciliter la maintenance et les tests, et de réutiliser le code dans différentes parties de l'application.
-
+// Réponse: 
 const { ObjectId } = require('mongodb');
+const db = require('../config/db');
 
-// Fonctions utilitaires pour MongoDB
-async function findOneById(collection, id) {
-    try {
-        return await collection.findOne({ _id: new ObjectId(id) });
-    } catch (error) {
-        console.error('Failed to find document by ID:', error);
-    }
+async function find(collection, query) {
+  try {
+    return await db.getDb().collection(collection).find(query).toArray();
+  } catch (error) {
+    console.error('Erreur lors de la récupération des documents:', error);
+    throw error;
+  }
 }
 
-async function insertOne(collection, document) {
-    try {
-        const result = await collection.insertOne(document);
-        return result.insertedId;
-    } catch (error) {
-        console.error('Failed to insert document:', error);
+async function findOneById(collectionName, id) {
+  try {
+    console.log(`Searching for document in collection ${collectionName} with ID: ${id}`);
+    const result = await db.getDb().collection(collectionName).findOne({ _id: new ObjectId(id) });
+    if (!result) {
+      console.error(`Document with ID ${id} not found in collection ${collectionName}`);
     }
+    return result;
+  } catch (error) {
+    console.error('Erreur lors de la recherche par ID:', error);
+    throw error;
+  }
 }
 
-async function getCourses() {
-    try {
-        const db = await getDb(); // Assuming getDb is a function that returns the database connection
-        const courses = await db.collection('courses').find().toArray();
-        return courses;
-    } catch (error) {
-        console.error('Failed to fetch courses:', error);
-        throw error;
-    }
+async function countDocuments(collection) {
+  try {
+    return await db.getDb().collection(collection).countDocuments();
+  } catch (error) {
+    console.error('Erreur lors du comptage des documents:', error);
+    throw error;
+  }
 }
 
-// Export des services
+async function insertOne(collectionName, document) {
+  try {
+    const result = await db.getDb().collection(collectionName).insertOne(document);
+    return { _id: result.insertedId, ...document };
+  } catch (error) {
+    console.error('Erreur lors de l\'insertion du document:', error);
+    throw error;
+  }
+}
+
 module.exports = {
-    findOneById,
-    insertOne,
-    getCourses
+  findOneById,
+  countDocuments,
+  insertOne,
+  find,
 };

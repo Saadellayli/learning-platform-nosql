@@ -1,50 +1,53 @@
 // Question: Comment organiser le point d'entrée de l'application ?
-// Réponse: Le point d'entrée de l'application doit initialiser les connexions aux bases de données, configurer les middlewares, monter les routes et démarrer le serveur.
 // Question: Quelle est la meilleure façon de gérer le démarrage de l'application ?
-// Réponse: Utiliser une fonction asynchrone pour gérer les connexions et démarrer le serveur, et gérer proprement les erreurs et la fermeture de l'application.
 
 const express = require('express');
-const config = require('./config/env');
-const db = require('./config/db');
+const config = require('./config/env'); // Fichier de configuration des variables d'environnement
+const db = require('./config/db'); // Fichier pour la gestion de la connexion à la base de données
 
-const courseRoutes = require('./routes/courseRoutes');
-// const studentRoutes = require('./routes/studentRoutes'); // Uncomment if you have student routes
+const courseRoutes = require('./routes/courseRoutes'); // Routes des cours
 
+// Créer une instance d'Express
 const app = express();
 
-// Middleware pour logger les erreurs
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
-});
-
+// Fonction pour démarrer le serveur
 async function startServer() {
   try {
-    // Initialiser les connexions aux bases de données
-    await db.connectMongo();
-    db.connectRedis();
+    // Initialiser les connexions aux bases de données (MongoDB, Redis, etc.)
+    await db.initializeConnections();
+    console.log('Database connections initialized');
 
-    // Configurer les middlewares Express
+    // Configurer les middlewares Express (par exemple, JSON parsing)
     app.use(express.json());
 
-    // Monter les routes
+    // Monter les routes de l'API
     app.use('/api/courses', courseRoutes);
-    // app.use('/api/students', studentRoutes); // Uncomment if you have student routes
+    // Ajouter d'autres routes ici (comme studentRoutes si nécessaire)
 
-    // Démarrer le serveur
+    // Démarrer le serveur sur le port défini dans la configuration
     app.listen(config.port, () => {
       console.log(`Server is running on port ${config.port}`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
-    process.exit(1);
+    process.exit(1); // En cas d'erreur, on arrête le serveur
   }
 }
 
-// Gestion propre de l'arrêt
+// Gestion propre de l'arrêt (ex. lors de l'envoi du signal SIGTERM)
 process.on('SIGTERM', async () => {
-  await db.closeConnections();
-  process.exit(0);
+  try {
+    // Implémenter la fermeture propre des connexions à MongoDB, Redis, etc.
+    await db.closeConnections();
+    console.log('Database connections closed');
+
+    // Arrêter proprement le serveur
+    process.exit(0);
+  } catch (error) {
+    console.error('Failed to close database connections:', error);
+    process.exit(1);
+  }
 });
 
+// Démarrer le serveur
 startServer();

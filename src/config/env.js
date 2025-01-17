@@ -1,32 +1,28 @@
 // Question: Pourquoi est-il important de valider les variables d'environnement au démarrage ?
-// Réponse : Cela permet de s'assurer que toutes les configurations nécessaires sont présentes avant de démarrer l'application, évitant ainsi des erreurs inattendues en cours d'exécution.
+// Réponse : 
 // Question: Que se passe-t-il si une variable requise est manquante ?
-// Réponse : L'application doit s'arrêter immédiatement et signaler l'erreur, ce qui permet de corriger le problème avant de continuer.
+// Réponse : 
 
 const dotenv = require('dotenv');
-dotenv.config(); // Charger les variables d'environnement à partir du fichier .env
+dotenv.config();
 
-// Liste des variables d'environnement requises
 const requiredEnvVars = [
   'MONGODB_URI',
   'MONGODB_DB_NAME',
-  'REDIS_URI',
-  'API_KEY',
-  'JWT_SECRET'
+  'REDIS_URI'
 ];
 
 // Validation des variables d'environnement
 function validateEnv() {
-  const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
-
-  if (missingVars.length > 0) {
-    throw new Error(
-      `Les variables d'environnement suivantes sont manquantes : ${missingVars.join(', ')}`
-    );
-  }
+  // TODO: Implémenter la validation
+  requiredEnvVars.forEach((envVar) => {
+    if (!process.env[envVar]) {
+      // Si une variable manque, lever une erreur explicative
+      throw new Error(`La variable d'environnement ${envVar} n'existe pas`);
+    }
+  });
 }
-
-// Appeler la validation immédiatement pour détecter les problèmes au démarrage
+// appel de la fonction
 validateEnv();
 
 module.exports = {
@@ -37,7 +33,5 @@ module.exports = {
   redis: {
     uri: process.env.REDIS_URI
   },
-  port: process.env.PORT || 3000,
-  apiKey: process.env.API_KEY,
-  jwtSecret: process.env.JWT_SECRET
+  port: process.env.PORT || 3000
 };

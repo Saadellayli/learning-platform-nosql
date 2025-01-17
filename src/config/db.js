@@ -1,85 +1,117 @@
 // Question : Pourquoi créer un module séparé pour les connexions aux bases de données ?
-// Réponse : Cela permet de centraliser la gestion des connexions, de réutiliser le code et de faciliter la maintenance.
+// Réponse : 
 // Question : Comment gérer proprement la fermeture des connexions ?
-// Réponse : En créant une fonction dédiée pour fermer les connexions et en s'assurant qu'elle est appelée lors de la fermeture de l'application.
-// Importation des modules nécessaires
-require('dotenv').config(); // Chargement des variables d'environnement
+// Réponse : 
+
+
 const { MongoClient } = require('mongodb');
 const redis = require('redis');
+const config = require('./env');
 
-// Déclaration des variables pour les clients MongoDB et Redis
 let mongoClient, redisClient, db;
 
-// Fonction pour connecter à MongoDB
-async function connectMongo() {
-  const url = process.env.MONGODB_URI; // Utilisation des variables d'environnement
-  const dbName = process.env.MONGODB_DB_NAME;
-  
-  try {
-    mongoClient = new MongoClient(url, { useUnifiedTopology: true });
-    await mongoClient.connect();
-    db = mongoClient.db(dbName);
-    console.log("Connecté à MongoDB avec succès !");
-  } catch (error) {
-    console.error("Erreur de connexion à MongoDB : ", error);
-    setTimeout(connectMongo, 5000); // Tentative de reconnexion après 5 secondes
-  }
+const MAX_RETRIES = 3;
+const RETRY_INTERVAL = 5000;
+
+async function connectMongo(retry = 0) {
+  // TODO: Implémenter la connexion MongoDB
+    try {
+        mongoClient = new MongoClient(config.mongodb.uri, {
+            useUnifiedTopology: true,
+            maxPoolSize: 10,
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
+        });
+        await mongoClient.connect();
+        db = mongoClient.db(config.mongodb.dbName);
+        console.log('Connected to MongoDB');
+        return db;
+    } catch(e) {
+        // Gérer les erreurs et les retries
+        console.error('Failed to connect to MongoDB', e);
+        if (retry < MAX_RETRIES) {
+            console.log(`Retrying in ${RETRY_INTERVAL}ms...`);
+            setTimeout(() => connectMongo(retry + 1), RETRY_INTERVAL);
+        }
+    }
 }
 
-// Fonction pour connecter à Redis
-async function connectRedis() {
-  const client = redis.createClient({ url: process.env.REDIS_URI });
+async function connectRedis(retry = 0) {
+    try {
+        redisClient = redis.createClient(config.redis.uri);
+        redisClient.on('error', (error) => {
+            console.error('Redis connection error:', error);
+        });
 
-  client.on('connect', () => {
-    console.log('Connecté à Redis avec succès !');
-  });
+        redisClient.on('connect', () => {
+            console.log('Connected to Redis');
+        });
 
-  client.on('error', (err) => {
-    console.error('Erreur Redis :', err);
-    setTimeout(connectRedis, 5000); // Tentative de reconnexion après 5 secondes
-  });
+        redisClient.on('end', () => {
+            console.log('Redis client disconnected');
+            if (retry < MAX_RETRIES) {
+                console.log(`Retrying Redis connection in ${RETRY_INTERVAL}ms...`);
+                setTimeout(() => connectRedis(retry + 1), RETRY_INTERVAL);
+            }
+        });
 
-  try {
-    await client.connect(); // Connexion à Redis
-    redisClient = client;
-  } catch (err) {
-    console.error('Erreur de connexion à Redis :', err);
-    setTimeout(connectRedis, 5000); // Tentative de reconnexion en cas d'erreur
-  }
+        redisClient.on('reconnecting', () => {
+            console.log('Redis client reconnecting...');
+        });
+
+        await redisClient.connect();
+        return redisClient;
+    } catch (e) {
+        console.error('Failed to connect to Redis', e);
+        if (retry < MAX_RETRIES) {
+            console.log(`Retrying in ${RETRY_INTERVAL}ms...`);
+            setTimeout(() => connectRedis(retry + 1), RETRY_INTERVAL);
+        }
+    }
 }
 
-// Fonction pour fermer les connexions
+
 async function closeConnections() {
-  if (mongoClient) {
-    await mongoClient.close();
-    console.log('Connexion MongoDB fermée');
-  }
-  
-  if (redisClient) {
-    redisClient.quit();
-    console.log('Connexion Redis fermée');
-  }
+    try {
+        if(mongoClient) {
+            await mongoClient.close();
+            console.log('MongoDB connection closed');
+        }
+
+        if(redisClient) {
+            await redisClient.quit();
+            console.log('Redis connection closed');
+        }
+    } catch (e) {
+        console.error('Failed to close connections', e);
+    }
 }
 
-// Export des fonctions et des clients
-async function getDb() {
-  if (!db) {
-    await connectMongo(); // Attendre la connexion à MongoDB avant de retourner db
-  }
-  return db;
-}
+async function initializeConnections() {
+    try {
+        const [mongoDb, redisDb] = await Promise.all([
+            connectMongo(),
+            connectRedis()
+        ]);
 
-async function getRedisClient() {
-  if (!redisClient) {
-    await connectRedis(); // Attendre la connexion à Redis avant de retourner redisClient
-  }
-  return redisClient;
+        return { mongoDb, redisDb };
+    } catch (error) {
+        console.error('Failed to initialize database connections:', error);
+        throw error;
+    }
 }
-
+function getDb() {
+  if (!mongoClient) {
+    throw new Error('Database not initialized. Call initializeConnections first.');
+  }
+  return mongoClient.db(config.mongodb.dbName); // Ensure to return the database instance
+}
+// Export des fonctions et clients
 module.exports = {
-  connectMongo,
-  connectRedis,
-  closeConnections,
-  getDb,
-  getRedisClient,
+  // TODO: Exporter les clients et fonctions utiles
+    initializeConnections,
+    closeConnections,
+    getMongoDb: () => db,
+    getRedisClient: () => redisClient,
+    getDb
 };
