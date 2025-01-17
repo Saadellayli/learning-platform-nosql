@@ -48,7 +48,6 @@ async function createCourse(req, res) {
 async function getCourse(req, res) {
   try {
     const { id } = req.params;
-    console.log(`Received request to get course with ID: ${id}`);
 
     if (!ObjectId.isValid(id)) {
       console.error(`Invalid ObjectId: ${id}`);
@@ -73,7 +72,6 @@ async function getCourse(req, res) {
     // Si non trouvé dans Redis ou en cas de timeout, récupérer depuis MongoDB
     const course = await mongoService.findOneById('courses', id);
     if (!course) {
-      console.log(`Course not found in database for ID: ${id}`);
       return res.status(404).json({ message: 'Cours non trouvé' });
     }
 

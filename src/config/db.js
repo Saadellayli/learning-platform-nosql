@@ -3,7 +3,6 @@
 // Question : Comment gérer proprement la fermeture des connexions ?
 // Réponse : 
 
-
 const { MongoClient } = require('mongodb');
 const redis = require('redis');
 const config = require('./env');
