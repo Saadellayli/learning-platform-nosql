@@ -12,6 +12,12 @@ const courseRoutes = require('./routes/courseRoutes');
 
 const app = express();
 
+// Middleware pour logger les erreurs
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
+});
+
 async function startServer() {
   try {
     // Initialiser les connexions aux bases de données

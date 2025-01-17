@@ -8,13 +8,13 @@ const db = require('../config/db');
 const mongoService = require('../services/mongoService');
 const redisService = require('../services/redisService');
 
-async function createCourse(req, res) {
+async function createCourse(req, res, next) {
   try {
     const courseData = req.body;
     const result = await mongoService.createCourse(courseData);
     res.status(201).json(result);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create course' });
+    next(error);
   }
 }
 
@@ -23,11 +23,11 @@ async function getCourses(req, res) {
     const courses = await mongoService.getCourses();
     res.status(200).json(courses);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch courses' });
+    res.status(500).json({ error: error.message });
   }
 }
 
-async function getCourse(req, res) {
+async function getCourse(req, res, next) {
   try {
     const courseId = req.params.id;
     const course = await mongoService.getCourse(courseId);
@@ -36,16 +36,16 @@ async function getCourse(req, res) {
     }
     res.status(200).json(course);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch course' });
+    next(error);
   }
 }
 
-async function getCourseStats(req, res) {
+async function getCourseStats(req, res, next) {
   try {
     const stats = await mongoService.getCourseStats();
     res.status(200).json(stats);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch course stats' });
+    next(error);
   }
 }
 

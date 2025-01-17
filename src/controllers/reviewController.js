@@ -1,21 +1,21 @@
 const mongoService = require('../services/mongoService');
 
-async function createReview(req, res) {
+async function createReview(req, res, next) {
   try {
     const reviewData = req.body;
     const result = await mongoService.createReview(reviewData);
     res.status(201).json(result);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create review' });
+    next(error);
   }
 }
 
-async function getReviews(req, res) {
+async function getReviews(req, res, next) {
   try {
     const reviews = await mongoService.getReviews();
     res.status(200).json(reviews);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch reviews' });
+    next(error);
   }
 }
 

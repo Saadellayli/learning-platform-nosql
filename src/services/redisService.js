@@ -8,12 +8,20 @@ const redis = require('redis');
 const client = redis.createClient();
 
 async function cacheData(key, data, ttl) {
-    await client.set(key, JSON.stringify(data), 'EX', ttl);
+    try {
+        await client.set(key, JSON.stringify(data), 'EX', ttl);
+    } catch (error) {
+        console.error('Failed to cache data:', error);
+    }
 }
 
 async function getCachedData(key) {
-    const data = await client.get(key);
-    return JSON.parse(data);
+    try {
+        const data = await client.get(key);
+        return JSON.parse(data);
+    } catch (error) {
+        console.error('Failed to get cached data:', error);
+    }
 }
 
 module.exports = {
